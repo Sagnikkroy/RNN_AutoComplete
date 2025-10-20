@@ -14,23 +14,28 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: white;
+            /* Use a height relative to the visual viewport on mobile */
+            /* This is a common fix for keyboard resizing issues, but often requires JS for a perfect solution */
+            height: 100dvh; /* Use 100dvh (dynamic viewport height) if supported, otherwise fall back to 100vh */
             height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow: hidden; /* Keep body overflow hidden */
         }
 
         .prediction-area {
-            flex: 1;
+            /* This section takes up all remaining space */
+            flex: 1; 
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-end; /* Align predictions to the bottom of their area */
             position: relative;
-            overflow: hidden;
+            overflow-y: auto; /* Allow scrolling if the content (like many predictions) grows tall */
+            padding-bottom: 20px; /* Add some padding at the bottom for spacing */
         }
 
         .gradient-overlay {
-            position: absolute;
+            position: sticky; /* Make the gradient sticky at the top */
             top: 0;
             left: 0;
             right: 0;
@@ -50,6 +55,10 @@
             transition: all 0.2s;
             font-weight: 400;
             animation: slideUp 0.15s ease-out;
+            /* Ensure the text is visible on smaller screens */
+            max-width: 90%;
+            word-wrap: break-word;
+            text-align: center;
         }
 
         @keyframes slideUp {
@@ -74,9 +83,11 @@
         }
 
         .text-area-section {
+            /* This section will always stick to the bottom */
             border-top: 2px solid #f0f0f0;
             padding: 20px;
             background: white;
+            flex-shrink: 0; /* Prevents this section from shrinking when the keyboard appears */
         }
 
         #textInput {
@@ -88,7 +99,8 @@
             border-radius: 15px;
             resize: none;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-           
+            /* Ensure the input itself doesn't cause overflow */
+            box-sizing: border-box; 
         }
 
         #textInput:focus {
@@ -151,6 +163,9 @@
             btn.textContent = word;
             btn.onclick = () => insertWord(word);
             predictionsDiv.appendChild(btn);
+            
+            // Scroll to the bottom of the prediction area to show the latest word
+            predictionsDiv.scrollTop = predictionsDiv.scrollHeight;
         }
 
         // Function to insert predicted word into textarea

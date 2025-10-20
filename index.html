@@ -9,53 +9,46 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            /* Enhance click responsiveness on iOS/Android */
             -webkit-tap-highlight-color: transparent; 
         }
 
-        /* UPDATED CSS: Top Bar centered container */
+        /* FIXED: Changed from sticky to fixed positioning */
         #topBar {
-            position: fixed; /* Always on screen */
+            position: fixed; /* Changed from sticky to fixed */
             top: 0;
             left: 0;
             width: 100%;
             height: 30px; 
-            background: rgba(255, 255, 255, 0); /* Completely transparent background */
+            background: rgba(255, 255, 255, 0);
             z-index: 1000; 
             display: flex;
-            /* CHANGE: Center horizontally */
             justify-content: center; 
             align-items: center;
             padding: 5px 20px;
-            pointer-events: none; /* Allows clicks to pass through */
+            pointer-events: none;
         }
 
         #wordCountDisplay {
-    color: #555; /* Darker gray text for visibility */
-   background: linear-gradient(to bottom, #f4f4f4,#ffffff, #e8e8e8); /* Light gray background */
-    padding: 8px 10px;
-    font-size: 20px;
-    border-top: #e9e9e9 2px solid;
-    border-bottom: #dadada 2px solid;
-    
-    /* Creates the capsule shape */
-    border-radius: 88px; 
-    font-weight: 500;
-    margin-top: 50px;
-    /* Center the text horizontally */
-    text-align: center;
-}
+            color: #555;
+            background: linear-gradient(to bottom, #f4f4f4,#ffffff, #f3f3f3);
+            padding: 8px 10px;
+            font-size: 20px;
+            border-top: #e9e9e9 2px solid;
+            border-bottom: #dadada 2px solid;
+            border-radius: 88px; 
+            font-weight: 500;
+            margin-top: 50px;
+            text-align: center;
+            pointer-events: auto; /* Allow clicks on the word count itself */
+        }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: white;
-            /* Use a height relative to the visual viewport on mobile */
-            height: 100dvh; 
             height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden; 
-            /* Add top padding equal to topBar height */
             padding-top: 30px; 
         }
 
@@ -63,14 +56,13 @@
             flex: 1; 
             display: flex;
             justify-content: center;
-            /* Vertically centers the prediction */
             align-items: center; 
             position: relative;
             overflow: hidden; 
         }
 
         .gradient-overlay {
-            position: absolute; /* Keep it absolute so it covers the top */
+            position: absolute;
             top: 0;
             left: 0;
             right: 0;
@@ -172,22 +164,17 @@
             const words = text.trim().split(/\s+/).filter(word => word.length > 0);
             const count = words.length;
             
-            // Update the display text
             wordCountDisplay.textContent = `Word Count: ${count}`;
         }
 
-        // Function to be called when text changes
         function onTextChange() {
             const text = textInput.value;
             
-            // Call the word count function
             updateWordCount(text);
 
-            // TODO: Connect this to your Python backend
             console.log('Text changed:', text);
         }
 
-        // Function to update prediction with slide-up animation
         function updatePredictions(word) {
             const gradientOverlay = predictionsDiv.querySelector('.gradient-overlay');
             predictionsDiv.innerHTML = '';
@@ -204,7 +191,6 @@
             predictionsDiv.appendChild(btn);
         }
 
-        // Function to insert predicted word into textarea
         function insertWord(word) {
             const currentText = textInput.value;
             
@@ -218,12 +204,10 @@
             onTextChange();
         }
 
-        // Example usage - remove this in production
         setTimeout(() => {
             updatePredictions('hello');
         }, 1000);
 
-        // Initial word count update
         updateWordCount(textInput.value);
     </script>
 </body>

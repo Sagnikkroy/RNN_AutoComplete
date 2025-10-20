@@ -9,33 +9,54 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            /* Enhance click responsiveness on iOS/Android */
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        /* UPDATED CSS: Top Bar to show visible text */
+        #topBar {
+            position: fixed; /* Always on screen */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 30px; /* Give it a small height */
+            background: rgba(255, 255, 255, 0); /* Completely transparent background */
+            color: #717171; /* Make text a subtle light gray (now visible) */
+            z-index: 1000; /* Ensure it's above everything */
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 0 20px; /* Increased padding for better spacing */
+            font-size: 20px;
+            /* REMOVED: opacity: 0; to make it visible */
+            pointer-events: none; /* Allows clicks to pass through */
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: white;
             /* Use a height relative to the visual viewport on mobile */
-            /* This is a common fix for keyboard resizing issues, but often requires JS for a perfect solution */
-            height: 100dvh; /* Use 100dvh (dynamic viewport height) if supported, otherwise fall back to 100vh */
+            height: 100dvh; 
             height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* Keep body overflow hidden */
+            overflow: hidden; 
+            /* Add top padding equal to topBar height */
+            padding-top: 30px; 
         }
 
         .prediction-area {
-            /* This section takes up all remaining space */
             flex: 1; 
             display: flex;
             justify-content: center;
-            align-items: flex-end; /* Align predictions to the bottom of their area */
+            /* Vertically centers the prediction */
+            align-items: center; 
             position: relative;
-            overflow-y: auto; /* Allow scrolling if the content (like many predictions) grows tall */
-            padding-bottom: 20px; /* Add some padding at the bottom for spacing */
+            overflow: hidden; 
         }
 
         .gradient-overlay {
-            position: sticky; /* Make the gradient sticky at the top */
+            position: absolute; /* Keep it absolute so it covers the top */
             top: 0;
             left: 0;
             right: 0;
@@ -55,8 +76,7 @@
             transition: all 0.2s;
             font-weight: 400;
             animation: slideUp 0.15s ease-out;
-            /* Ensure the text is visible on smaller screens */
-            max-width: 90%;
+            max-width: 90%; 
             word-wrap: break-word;
             text-align: center;
         }
@@ -79,15 +99,15 @@
         }
 
         .prediction-word:active {
-            transform: translateY(0);
+            transform: scale(0.95); 
+            transition: transform 0.05s ease-out; 
         }
 
         .text-area-section {
-            /* This section will always stick to the bottom */
             border-top: 2px solid #f0f0f0;
             padding: 20px;
             background: white;
-            flex-shrink: 0; /* Prevents this section from shrinking when the keyboard appears */
+            flex-shrink: 0; 
         }
 
         #textInput {
@@ -99,7 +119,6 @@
             border-radius: 15px;
             resize: none;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            /* Ensure the input itself doesn't cause overflow */
             box-sizing: border-box; 
         }
 
@@ -114,6 +133,10 @@
     </style>
 </head>
 <body>
+    <div id="topBar">
+        <span id="wordCountDisplay">Word Count: 0</span>
+    </div>
+
     <div class="prediction-area" id="predictions">
         <div class="gradient-overlay"></div>
     </div>
@@ -129,27 +152,31 @@
     <script>
         const textInput = document.getElementById('textInput');
         const predictionsDiv = document.getElementById('predictions');
+        const wordCountDisplay = document.getElementById('wordCountDisplay');
+
+        function updateWordCount(text) {
+            // Trim whitespace from both ends, then split by one or more spaces, tabs, or newlines.
+            // Filter is used to remove empty strings that result from extra spaces.
+            const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+            const count = words.length;
+            
+            // Update the display text
+            wordCountDisplay.textContent = `Word Count: ${count}`;
+        }
 
         // Function to be called when text changes
         function onTextChange() {
             const text = textInput.value;
             
+            // Call the word count function
+            updateWordCount(text);
+
             // TODO: Connect this to your Python backend
-            // Example: fetch predictions from your RNN model
-            // fetch('/predict', {
-            //     method: 'POST',
-            //     headers: {'Content-Type': 'application/json'},
-            //     body: JSON.stringify({text: text})
-            // })
-            // .then(response => response.json())
-            // .then(data => updatePredictions(data.prediction));
-            
             console.log('Text changed:', text);
         }
 
         // Function to update prediction with slide-up animation
         function updatePredictions(word) {
-            // Keep the gradient overlay
             const gradientOverlay = predictionsDiv.querySelector('.gradient-overlay');
             predictionsDiv.innerHTML = '';
             predictionsDiv.appendChild(gradientOverlay);
@@ -163,32 +190,29 @@
             btn.textContent = word;
             btn.onclick = () => insertWord(word);
             predictionsDiv.appendChild(btn);
-            
-            // Scroll to the bottom of the prediction area to show the latest word
-            predictionsDiv.scrollTop = predictionsDiv.scrollHeight;
         }
 
         // Function to insert predicted word into textarea
         function insertWord(word) {
             const currentText = textInput.value;
             
-            // Add space before word if text doesn't end with space
             if (currentText && !currentText.endsWith(' ')) {
                 textInput.value = currentText + ' ' + word + ' ';
             } else {
                 textInput.value = currentText + word + ' ';
             }
             
-            // Trigger input event to get new predictions
             textInput.focus();
             onTextChange();
         }
 
         // Example usage - remove this in production
-        // Simulate prediction after 1 second
         setTimeout(() => {
             updatePredictions('hello');
         }, 1000);
+
+        // Initial word count update
+        updateWordCount(textInput.value);
     </script>
 </body>
 </html>

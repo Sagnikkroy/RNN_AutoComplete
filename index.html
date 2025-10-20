@@ -99,6 +99,15 @@
                 color: #333;
             }
         }
+        .germ{
+            margin-top: 10px;
+            font-size: 14px;
+            color: #888;
+            text-align: center;
+            font-weight: 400;
+        }
+
+
 
         .prediction-word:hover {
             color: #7a66ea;
@@ -127,6 +136,11 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             box-sizing: border-box; 
         }
+        .link{
+            color: #0000ff;
+            font-weight: 600;
+            text-decoration: none;
+        }
 
         #textInput:focus {
             outline: none;
@@ -153,6 +167,7 @@
             placeholder="Start typing here..."
             oninput="onTextChange()"
         ></textarea>
+        <div class="germ">This model is powered by a RNN model architecture for a better LSTM model refer to <a class="link" href="https://arxiv.org/abs/1707.06472">LSTM Autocomplete</a>.</div>
     </div>
 
     <script>

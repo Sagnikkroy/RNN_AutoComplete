@@ -9,20 +9,19 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent; 
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* FIXED: Changed from sticky to fixed positioning */
         #topBar {
-            position: fixed; /* Changed from sticky to fixed */
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            height: 30px; 
+            height: 30px;
             background: rgba(255, 255, 255, 0);
-            z-index: 1000; 
+            z-index: 1000;
             display: flex;
-            justify-content: center; 
+            justify-content: center;
             align-items: center;
             padding: 5px 20px;
             pointer-events: none;
@@ -35,11 +34,11 @@
             font-size: 20px;
             border-top: #e9e9e9 2px solid;
             border-bottom: #dadada 2px solid;
-            border-radius: 88px; 
+            border-radius: 88px;
             font-weight: 500;
             margin-top: 50px;
             text-align: center;
-            pointer-events: auto; /* Allow clicks on the word count itself */
+            pointer-events: auto;
         }
 
         body {
@@ -48,17 +47,17 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden; 
-            padding-top: 30px; 
+            overflow: hidden;
+            padding-top: 30px;
         }
 
         .prediction-area {
-            flex: 1; 
+            flex: 1;
             display: flex;
             justify-content: center;
-            align-items: center; 
+            align-items: center;
             position: relative;
-            overflow: hidden; 
+            overflow: hidden;
         }
 
         .gradient-overlay {
@@ -71,35 +70,33 @@
             pointer-events: none;
             z-index: 10;
         }
-
-        .prediction-word {
+        
+        #charPredictionDisplay {
             background: white;
             color: #333;
             border: none;
             padding: 20px 40px;
-            font-size: 60px;
-            cursor: pointer;
-            transition: all 0.2s;
+            font-size: 40px;
             font-weight: 400;
-            animation: slideUp 0.15s ease-out;
-            max-width: 90%; 
+            max-width: 90%;
             word-wrap: break-word;
             text-align: center;
+            white-space: pre-wrap;
+            line-height: 1.2;
         }
 
-        @keyframes slideUp {
-            0% {
-                transform: translateY(50px);
-                opacity: 0;
-                color: #002efd;
-            }
-            100% {
-                transform: translateY(0);
-                opacity: 1;
-                color: #333;
-            }
+        .user-text-highlight {
+            color: #333;
+            opacity: 1;
         }
-        .germ{
+
+        .predicted-text-faded {
+            color: #333;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        
+        .germ {
             margin-top: 10px;
             font-size: 14px;
             color: #888;
@@ -107,22 +104,11 @@
             font-weight: 400;
         }
 
-
-
-        .prediction-word:hover {
-            color: #7a66ea;
-        }
-
-        .prediction-word:active {
-            transform: scale(0.95); 
-            transition: transform 0.05s ease-out; 
-        }
-
         .text-area-section {
             border-top: 2px solid #ffffff;
             padding: 20px;
             background: white;
-            flex-shrink: 0; 
+            flex-shrink: 0;
         }
 
         #textInput {
@@ -134,9 +120,10 @@
             border-radius: 15px;
             resize: none;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            box-sizing: border-box; 
+            box-sizing: border-box;
         }
-        .link{
+        
+        .link {
             color: #0000ff;
             font-weight: 600;
             text-decoration: none;
@@ -159,6 +146,7 @@
 
     <div class="prediction-area" id="predictions">
         <div class="gradient-overlay"></div>
+        <div id="charPredictionDisplay"></div>
     </div>
 
     <div class="text-area-section">
@@ -166,6 +154,7 @@
             id="textInput" 
             placeholder="Start typing here..."
             oninput="onTextChange()"
+            onkeydown="onKeyDown(event)"
         ></textarea>
         <div class="germ">This model is powered by a basic RNN model architecture for a better LSTM model refer to <a class="link" href="https://arxiv.org/abs/1707.06472">LSTM Autocomplete</a>.</div>
         <div class="germ">Find the source code on <a class="link" href="https://github.com/Sagnikkroy/RNN_AutoComplete">GitHub</a>.</div>
@@ -173,57 +162,85 @@
 
     <script>
         const textInput = document.getElementById('textInput');
-        const predictionsDiv = document.getElementById('predictions');
+        const charPredictionDisplay = document.getElementById('charPredictionDisplay');
         const wordCountDisplay = document.getElementById('wordCountDisplay');
+        
+        let currentPrediction = '';
 
         function updateWordCount(text) {
             const words = text.trim().split(/\s+/).filter(word => word.length > 0);
             const count = words.length;
-            
             wordCountDisplay.textContent = `Word Count: ${count}`;
         }
 
-        function onTextChange() {
+        async function realServerPrediction(input_text) {
+            if (input_text.length < 1) {
+                return 'Start typing now...';
+            }
+            
+            const serverUrl = 'http://127.0.0.1:8000/predict';
+            
+            try {
+                const response = await fetch(serverUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: input_text,
+                        max_length: 20,
+                        temperature: 0.7
+                    })
+                });
+
+                if (!response.ok) {
+                    console.error(`API Error: ${response.statusText}`);
+                    return 'API Error...';
+                }
+
+                const data = await response.json();
+                return data.prediction || '';
+
+            } catch (error) {
+                console.error('Connection failed (Server offline?):', error);
+                return 'Server offline...';
+            }
+        }
+
+        async function onTextChange() {
             const text = textInput.value;
             
             updateWordCount(text);
+            
+            currentPrediction = await realServerPrediction(text);
 
-            console.log('Text changed:', text);
+            updateCenterDisplay(text, currentPrediction);
+        }
+        
+        function updateCenterDisplay(userText, predictedText) {
+            const userSpan = `<span class="user-text-highlight">${userText}</span>`;
+            const predictionSpan = `<span class="predicted-text-faded">${predictedText}</span>`;
+            
+            charPredictionDisplay.innerHTML = userSpan + predictionSpan;
         }
 
-        function updatePredictions(word) {
-            const gradientOverlay = predictionsDiv.querySelector('.gradient-overlay');
-            predictionsDiv.innerHTML = '';
-            predictionsDiv.appendChild(gradientOverlay);
-            
-            if (!word) {
-                return;
+        function onKeyDown(event) {
+            if (event.key === 'Tab' && currentPrediction.length > 0 && currentPrediction !== 'Server offline...' && currentPrediction !== 'API Error...') {
+                event.preventDefault();
+                
+                textInput.value += currentPrediction;
+                currentPrediction = '';
+                
+                onTextChange();
             }
-
-            const btn = document.createElement('button');
-            btn.className = 'prediction-word';
-            btn.textContent = word;
-            btn.onclick = () => insertWord(word);
-            predictionsDiv.appendChild(btn);
         }
-
-        function insertWord(word) {
-            const currentText = textInput.value;
-            
-            if (currentText && !currentText.endsWith(' ')) {
-                textInput.value = currentText + ' ' + word + ' ';
-            } else {
-                textInput.value = currentText + word + ' ';
-            }
-            
-            textInput.focus();
-            onTextChange();
-        }
-
-        setTimeout(() => {
-            updatePredictions('hello');
-        }, 1000);
-
+        
+        textInput.focus();
+        realServerPrediction(textInput.value).then(pred => {
+             currentPrediction = pred;
+             updateCenterDisplay(textInput.value, currentPrediction);
+        });
+        
         updateWordCount(textInput.value);
     </script>
 </body>

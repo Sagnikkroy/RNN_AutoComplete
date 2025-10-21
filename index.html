@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
     <title>RNN Autocomplete</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL@0" />
     <style>
         * {
             margin: 0;
@@ -55,7 +56,7 @@
             background: linear-gradient(to bottom, #f4f4f4,#ffffff, #f3f3f3);
             padding: 6px 12px;
             font-size: 25px;
-            border-top: #e9e9e9 2px solid;
+            border-top: #e9e9e9 1.5px solid;
             border-bottom: #dadada 2px solid;
             border-radius: 88px;
             font-weight: 500;
@@ -68,6 +69,30 @@
             background: linear-gradient(to bottom, #111111, #222222);
             border-top-color: #333333;
             border-bottom: 1px solid #3f3f3f;
+        }
+
+        .model-selector-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .api-status-icon {
+            font-size: 20px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(-360deg);
+            }
+        }
+
+        .api-status-icon.inactive {
+            animation: none;
         }
 
         #modelSelector {
@@ -376,10 +401,13 @@
 <body>
     <div id="topBar">
         <span id="wordCountDisplay">Word Count: 0</span>
-        <select id="modelSelector" onchange="onModelChange()">
-            <option value="rnn">RNN Model</option>
-            <option value="lstm">LSTM Model</option>
-        </select>
+        <div class="model-selector-wrapper">
+            <span class="api-status-icon material-symbols-outlined" id="apiStatusIcon">toys_fan</span>
+            <select id="modelSelector" onchange="onModelChange()">
+                <option value="rnn">RNN Model</option>
+                <option value="lstm">LSTM Model</option>
+            </select>
+        </div>
         <button class="dark-mode-toggle" id="darkModeToggle" onclick="toggleDarkMode()"></button>
     </div>
 
@@ -404,9 +432,11 @@
         const charPredictionDisplay = document.getElementById('charPredictionDisplay');
         const wordCountDisplay = document.getElementById('wordCountDisplay');
         const modelSelector = document.getElementById('modelSelector');
+        const apiStatusIcon = document.getElementById('apiStatusIcon');
         
         let currentPrediction = '';
         let currentModel = 'rnn';
+        let apiActive = false;
 
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
@@ -420,6 +450,17 @@
             }
         }
 
+        function updateApiStatusIcon() {
+            const icon = apiStatusIcon;
+            if (apiActive) {
+                icon.textContent = 'toys_fan';
+                apiStatusIcon.classList.remove('inactive');
+            } else {
+                icon.textContent = 'mode_fan_off';
+                apiStatusIcon.classList.add('inactive');
+            }
+        }
+
         function updateWordCount(text) {
             const words = text.trim().split(/\s+/).filter(word => word.length > 0);
             const count = words.length;
@@ -428,6 +469,8 @@
 
         async function realServerPrediction(input_text) {
             if (input_text.length < 1) {
+                apiActive = false;
+                updateApiStatusIcon();
                 return 'Start typing now...';
             }
             
@@ -450,14 +493,20 @@
 
                 if (!response.ok) {
                     console.error(`API Error: ${response.statusText}`);
+                    apiActive = false;
+                    updateApiStatusIcon();
                     return 'API Error...';
                 }
 
+                apiActive = true;
+                updateApiStatusIcon();
                 const data = await response.json();
                 return data.prediction || '';
 
             } catch (error) {
                 console.error('Connection failed (Server offline?):', error);
+                apiActive = false;
+                updateApiStatusIcon();
                 return 'Server offline...';
             }
         }
@@ -504,6 +553,7 @@
         });
         
         updateWordCount(textInput.value);
+        updateApiStatusIcon();
     </script>
 </body>
 </html>

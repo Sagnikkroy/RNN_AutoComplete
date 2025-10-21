@@ -17,12 +17,9 @@ print(f"using {device}")
 torch.manual_seed(42)
 np.random.seed(42)
 
-# Corrected absolute path:
-# NOTE: If you moved your dataset folder elsewhere, update this path!
+
 file_path = r'D:\RNN_AutoComplete\dataset\ds.txt' 
 
-# If you moved it back to D:\RNN_AutoComplete\dataset\ds.txt, use:
-# file_path = r'D:\RNN_AutoComplete\dataset\ds.txt'
 
 try:
     with open(file_path, 'r', encoding='utf-8') as file:

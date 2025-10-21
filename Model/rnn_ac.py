@@ -183,7 +183,7 @@ def autocomplete_working(model, start_text, max_length=30, temperature=0.8):
 
 # Training setup
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.Adam(model.parameters(), lr=0.0005)
 
 # Create DataLoader for batching
 batch_size = 64
@@ -214,10 +214,10 @@ def train_model(model, dataloader, epochs=50):
         avg_loss = total_loss / len(dataloader)
         losses.append(avg_loss)
         
-        if (epoch + 1) % 10 == 0:
+        if (epoch + 1) % 5 == 0:
             print(f'Epoch [{epoch+1}/{epochs}], Loss: {avg_loss:.4f}')
-            
-            # Test autocomplete after every 10 epochs (uses the now-defined function)
+
+            # Test autocomplete after every 5 epochs (uses the now-defined function)
             model.eval()
             test_input = "hello"
             with torch.no_grad():
@@ -230,7 +230,7 @@ def train_model(model, dataloader, epochs=50):
 
 # Train the model
 print("Starting training...")
-losses = train_model(model, dataloader, epochs=100)
+losses = train_model(model, dataloader, epochs=200)
 
 # Plot training loss
 plt.figure(figsize=(10, 5))

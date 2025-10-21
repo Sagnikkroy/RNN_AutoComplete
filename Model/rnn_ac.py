@@ -15,7 +15,7 @@ torch.manual_seed(42)
 np.random.seed(42)
 
 # %%
-with open('../dataset/ds.txt', 'r') as file:
+with open('D:\\RNN_AutoComplete\\dataset\\ds.txt', 'r') as file:
     training_text = file.read()
 
 print("training text:")

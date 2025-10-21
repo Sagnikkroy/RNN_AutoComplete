@@ -45,7 +45,7 @@ Customer relationship management systems track interactions.
 Supply chain optimization reduces costs and improves efficiency.
 Digital marketing strategies target specific audiences.
 Social media platforms connect people worldwide.
-E-commerce websites facilitate online shopping.
+E commerce websites facilitate online shopping.
 Content management systems make website updates easier.
 Search engine optimization improves website visibility.
 I love reading books in my free time.
@@ -347,15 +347,12 @@ We have 7 days to finish.
 The team has 11 players.
 I waited for 30 minutes.
 He scored 98 points.
-Please call me at 555-1234.
 My zip code is 90210.
 The meeting is on March 15.
 I was born in 1990.
-That will be $19.99.
+That will be 19.99.
 The temperature is 75 degrees.
-I need 1/2 cup of sugar.
 The store opens at 9 AM.
-My flight arrives at 6:45.
 The code is 7392.
 I read 3 books this month.
 We walked 5 miles today.

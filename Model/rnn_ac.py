@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import Counter
 import random
+import re
 
 # %%
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -14,14 +15,23 @@ torch.manual_seed(42)
 np.random.seed(42)
 
 # %%
-with open('ds.txt', 'r') as file:
+with open('../dataset/ds.txt', 'r') as file:
     training_text = file.read()
 
 print("training text:")
-print(training_text)
+print(training_text[:500])  # Show first 500 characters
 
 # %%
-# Get all unique characters from our text
+def clean_text(text):
+    # Remove unwanted characters and normalize whitespace
+    cleaned = re.sub(r'[^a-zA-Z0-9\s\.\!\?\,\'\-]', '', text)
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    return cleaned
+
+# Clean the text first
+training_text = clean_text(training_text)
+
+# Get all unique characters from our cleaned text
 chars = sorted(list(set(training_text.lower())))
 print(f"Unique characters: {chars}")
 print(f"Total unique characters: {len(chars)}")
@@ -138,56 +148,71 @@ print("Model created!")
 print(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
 # %%
-def autocomplete(model, start_text, max_length=50, temperature=0.8, seq_length=15):
-    """Generate autocomplete suggestions - IMPROVED VERSION"""
-    model.eval()
+# Training setup
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# Create DataLoader for batching
+batch_size = 64
+dataset = torch.utils.data.TensorDataset(X, y)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+# %%
+# Training loop
+def train_model(model, dataloader, epochs=50):
+    model.train()
+    losses = []
     
-    # Convert start text to indices
-    start_indices = text_to_indices(start_text)
-    
-    # Handle short inputs by padding
-    if len(start_indices) < seq_length:
-        # We can either pad or use what we have
-        # Let's use what we have but warn the user
-        print(f"Warning: Input '{start_text}' is shorter than sequence length {seq_length}")
-        # We'll just use the available characters
-        current_sequence = start_indices
-    else:
-        # Use the last seq_length characters
-        current_sequence = start_indices[-seq_length:]
-    
-    generated = start_indices.copy()
-    
-    with torch.no_grad():
-        # Convert to tensor with correct shape: (batch_size=1, sequence_length)
-        current_seq = torch.tensor([current_sequence]).to(device)
-        print(f"Starting with sequence: '{indices_to_text(current_sequence)}'")
-        
-        for i in range(max_length):
+    for epoch in range(epochs):
+        total_loss = 0
+        for batch_X, batch_y in dataloader:
+            # Move data to device
+            batch_X, batch_y = batch_X.to(device), batch_y.to(device)
+            
+            # Zero gradients
+            optimizer.zero_grad()
+            
             # Forward pass
-            output, _ = model(current_seq)
+            outputs, _ = model(batch_X)
+            loss = criterion(outputs, batch_y)
             
-            # Apply temperature
-            output = output / temperature
+            # Backward pass
+            loss.backward()
             
-            # Get probabilities
-            probabilities = torch.softmax(output, dim=-1).cpu().numpy()[0]
+            # Clip gradients to prevent explosion
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
             
-            # Sample next character
-            next_char_idx = np.random.choice(len(probabilities), p=probabilities)
-            generated.append(next_char_idx)
+            total_loss += loss.item()
+        
+        avg_loss = total_loss / len(dataloader)
+        losses.append(avg_loss)
+        
+        if (epoch + 1) % 10 == 0:
+            print(f'Epoch [{epoch+1}/{epochs}], Loss: {avg_loss:.4f}')
             
-            # Update sequence (sliding window)
-            new_sequence = generated[-seq_length:]
-            current_seq = torch.tensor([new_sequence]).to(device)
-            
-            # Optional: stop if we generate a newline or similar
-            if idx_to_char[next_char_idx] == '\n':
-                break
+            # Test autocomplete after every 10 epochs
+            model.eval()
+            test_input = "hello"
+            with torch.no_grad():
+                completion = autocomplete_working(model, test_input, max_length=10, temperature=0.7)
+            print(f"  Test: '{test_input}' -> '{completion}'")
+            model.train()
     
-    final_text = indices_to_text(generated)
-    print(f"Final result: '{final_text}'")
-    return final_text
+    return losses
+
+# Train the model
+print("Starting training...")
+losses = train_model(model, dataloader, epochs=100)
+
+# Plot training loss
+plt.figure(figsize=(10, 5))
+plt.plot(losses)
+plt.title('Training Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.grid(True)
+plt.show()
 
 # %%
 def autocomplete_working(model, start_text, max_length=30, temperature=0.8):
@@ -202,8 +227,9 @@ def autocomplete_working(model, start_text, max_length=30, temperature=0.8):
     with torch.no_grad():
         # Handle sequence length
         if len(start_indices) < seq_length:
-            # Pad with zeros (0 is usually space or most common char)
-            current_sequence = [0] * (seq_length - len(start_indices)) + start_indices
+            # Pad with space character (find space index)
+            space_idx = char_to_idx[' ']
+            current_sequence = [space_idx] * (seq_length - len(start_indices)) + start_indices
         else:
             current_sequence = start_indices[-seq_length:]
         
@@ -224,12 +250,17 @@ def autocomplete_working(model, start_text, max_length=30, temperature=0.8):
             # Update sequence (sliding window)
             current_sequence = generated[-seq_length:]
             current_seq = torch.tensor([current_sequence]).to(device)
+            
+            # Optional: stop if we generate punctuation that might end a sentence
+            if idx_to_char[next_char_idx] in ['.', '!', '?', '\n'] and i > 5:
+                break
     
     return indices_to_text(generated)
 
-# Test it!
-print("\n=== Testing Fixed Autocomplete ===")
-test_inputs = ["hello", "mach", "neur", "pyt"]
+# %%
+# Test the trained model
+print("\n=== Testing Trained Autocomplete ===")
+test_inputs = ["hello", "mach", "neur", "pyt", "artificial", "the quick"]
 
 for test_input in test_inputs:
     completion = autocomplete_working(model, test_input, max_length=20, temperature=0.7)
@@ -237,8 +268,8 @@ for test_input in test_inputs:
 
 # %%
 def interactive_demo_fixed():
-    print("\n🎯 === INTERACTIVE AUTOCOMPLETE (FIXED) ===")
     print("Type some text and see what the model suggests!")
+    print("Type 'quit' to exit.")
     
     while True:
         user_input = input("\nStart typing: ").strip()
@@ -259,4 +290,14 @@ def interactive_demo_fixed():
 # Run the fixed demo
 interactive_demo_fixed()
 
+# %%
+# Save the trained model
+torch.save({
+    'model_state_dict': model.state_dict(),
+    'char_to_idx': char_to_idx,
+    'idx_to_char': idx_to_char,
+    'vocab_size': vocab_size,
+    'hidden_size': hidden_size
+}, 'autocomplete_model.pth')
 
+print("Model saved as 'autocomplete_model.pth'")

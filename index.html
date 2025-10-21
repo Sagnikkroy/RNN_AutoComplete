@@ -70,6 +70,30 @@
             border-bottom: 1px solid #3f3f3f;
         }
 
+        #modelSelector {
+            color: #555;
+            background: #00000000;
+            
+            font-size: 16px;
+            
+            border: none;
+            
+            font-weight: 530;
+            text-align: center;
+            
+            cursor: pointer;
+        }
+        modelSelector option {
+            background: rgba(255, 255, 255, 0);
+            color: #00000000;
+        }
+
+        body.dark-mode #modelSelector {
+            color: #aaa;
+            
+            
+        }
+
         .dark-mode-toggle {
             display: flex;
             align-items: center;
@@ -281,6 +305,11 @@
                 padding: 5px 10px;
             }
 
+            #modelSelector {
+                font-size: 14px;
+                padding: 5px 10px;
+            }
+
             .prediction-area {
                 padding: 15px 10px;
             }
@@ -314,6 +343,11 @@
                 padding: 4px 8px;
             }
 
+            #modelSelector {
+                font-size: 13px;
+                padding: 4px 8px;
+            }
+
             .prediction-area {
                 padding: 10px;
             }
@@ -342,6 +376,10 @@
 <body>
     <div id="topBar">
         <span id="wordCountDisplay">Word Count: 0</span>
+        <select id="modelSelector" onchange="onModelChange()">
+            <option value="rnn">RNN Model</option>
+            <option value="lstm">LSTM Model</option>
+        </select>
         <button class="dark-mode-toggle" id="darkModeToggle" onclick="toggleDarkMode()"></button>
     </div>
 
@@ -358,15 +396,17 @@
             onkeydown="onKeyDown(event)"
         ></textarea>
         <div class="germ">This model is powered by a basic RNN model architecture for a better LSTM model refer to <a class="link" href="https://arxiv.org/abs/1707.06472">LSTM Autocomplete</a>.</div>
-        <div class="germ">Find the source code on <a class="link" href="https://github.com/Sagnikkroy/RNN_AutoComplete">GitHub</a>.</div>
+        <div class="germ">Find the source code on <a class="link" href="https://github.com/Sagnikkroy/RNN_AutoComplete">GitHub</a> & <a class="link" href="https://huggingface.co/Sagnikkroy/RNN_AutoComplete">HuggingFace</a>.</div>
     </div>
 
     <script>
         const textInput = document.getElementById('textInput');
         const charPredictionDisplay = document.getElementById('charPredictionDisplay');
         const wordCountDisplay = document.getElementById('wordCountDisplay');
+        const modelSelector = document.getElementById('modelSelector');
         
         let currentPrediction = '';
+        let currentModel = 'rnn';
 
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
@@ -391,7 +431,9 @@
                 return 'Start typing now...';
             }
             
-            const serverUrl = 'http://127.0.0.1:8000/predict';
+            const serverUrl = currentModel === 'rnn' 
+                ? 'http://127.0.0.1:8000/predict'
+                : 'http://127.0.0.1:8001/predict';
             
             try {
                 const response = await fetch(serverUrl, {
@@ -446,6 +488,12 @@
                 
                 onTextChange();
             }
+        }
+
+        function onModelChange() {
+            currentModel = modelSelector.value;
+            currentPrediction = '';
+            onTextChange();
         }
         
         initDarkMode();

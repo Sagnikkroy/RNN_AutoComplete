@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRT Pixel Background</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100vh;
+            filter: contrast(1.2) brightness(1.1);
+        }
+
+        /* CRT screen overlay effects */
+        #canvas::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 0, 0, 0.15),
+                    rgba(0, 0, 0, 0.15) 1px,
+                    transparent 1px,
+                    transparent 2px
+                );
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .hero-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+            color: #fff;
+        }
+
+        .hero-content h1 {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        .hero-content p {
+            font-size: 1.5rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="hero-content">
+        <h1>Your Hero Title</h1>
+        <p>Your tagline goes here</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        const pixelSize = 6;
+        const subPixelWidth = 1.6;
+        const cols = Math.floor(width / pixelSize);
+        const rows = Math.floor(height / pixelSize);
+
+        let mouse = { x: -1000, y: -1000 };
+        const disturbanceRadius = 100;
+
+        class Pixel {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.baseR = Math.random() * 255;
+                this.baseG = Math.random() * 255;
+                this.baseB = Math.random() * 255;
+                this.brightness = Math.random();
+                this.flickerSpeed = 0.02 + Math.random() * 0.03;
+                this.offsetX = 0;
+                this.offsetY = 0;
+            }
+
+            update() {
+                this.brightness += this.flickerSpeed;
+                if (this.brightness > 1 || this.brightness < 0) {
+                    this.flickerSpeed *= -1;
+                }
+
+                // Occasional color shift
+                if (Math.random() > 0.98) {
+                    this.baseR = Math.random() * 255;
+                    this.baseG = Math.random() * 255;
+                    this.baseB = Math.random() * 255;
+                }
+
+                // Mouse disturbance effect
+                const pixelCenterX = this.x * pixelSize + pixelSize / 2;
+                const pixelCenterY = this.y * pixelSize + pixelSize / 2;
+                const dx = mouse.x - pixelCenterX;
+                const dy = mouse.y - pixelCenterY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < disturbanceRadius) {
+                    const force = (disturbanceRadius - distance) / disturbanceRadius;
+                    this.offsetX = -dx * force * 0.3;
+                    this.offsetY = -dy * force * 0.3;
+                    
+                    // Intensify brightness near mouse
+                    this.brightness = Math.min(1, this.brightness + force * 0.5);
+                    
+                    // Random color glitch
+                    if (Math.random() > 0.95) {
+                        this.baseR = Math.random() * 255;
+                        this.baseG = Math.random() * 255;
+                        this.baseB = Math.random() * 255;
+                    }
+                } else {
+                    // Smoothly return to original position
+                    this.offsetX *= 0.9;
+                    this.offsetY *= 0.9;
+                }
+            }
+
+            draw() {
+                const alpha = this.brightness * 0.8;
+                const pixelX = this.x * pixelSize + this.offsetX;
+                const pixelY = this.y * pixelSize + this.offsetY;
+                
+                // Draw RGB subpixels (vertical stripes)
+                // Red subpixel
+                ctx.fillStyle = `rgba(${this.baseR}, 0, 0, ${alpha})`;
+                ctx.fillRect(pixelX, pixelY, subPixelWidth, pixelSize);
+                
+                // Green subpixel
+                ctx.fillStyle = `rgba(0, ${this.baseG}, 0, ${alpha})`;
+                ctx.fillRect(pixelX + subPixelWidth, pixelY, subPixelWidth, pixelSize);
+                
+                // Blue subpixel
+                ctx.fillStyle = `rgba(0, 0, ${this.baseB}, ${alpha})`;
+                ctx.fillRect(pixelX + subPixelWidth * 2, pixelY, subPixelWidth, pixelSize);
+                
+                // Black gap between pixels
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillRect(pixelX + subPixelWidth * 3, pixelY, 0.7, pixelSize);
+            }
+        }
+
+        const pixels = [];
+        for (let i = 0; i < cols; i++) {
+            for (let j = 0; j < rows; j++) {
+                if (Math.random() > 0.7) {
+                    pixels.push(new Pixel(i, j));
+                }
+            }
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, width, height);
+
+            pixels.forEach(pixel => {
+                pixel.update();
+                pixel.draw();
+            });
+
+            // Horizontal scanlines
+            for (let i = 0; i < height; i += 3) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.fillRect(0, i, width, 1);
+            }
+
+            // Moving scanline
+            const scanlineY = (Date.now() * 0.1) % height;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.fillRect(0, scanlineY, width, 3);
+
+            // RGB chromatic aberration effect near edges
+            const vignette = ctx.createRadialGradient(
+                width / 2, height / 2, 0,
+                width / 2, height / 2, width / 1.5
+            );
+            vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            vignette.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+            ctx.fillStyle = vignette;
+            ctx.fillRect(0, 0, width, height);
+
+            // Screen curvature distortion effect (subtle)
+            ctx.globalCompositeOperation = 'lighter';
+            
+            // Random noise static
+            if (Math.random() > 0.97) {
+                for (let i = 0; i < 5; i++) {
+                    const x = Math.random() * width;
+                    const y = Math.random() * height;
+                    const size = Math.random() * 2 + 1;
+                    ctx.fillStyle = `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 0.3)`;
+                    ctx.fillRect(x, y, size, size);
+                }
+            }
+            
+            ctx.globalCompositeOperation = 'source-over';
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            mouse.x = -1000;
+            mouse.y = -1000;
+        });
+    </script>
+</body>
+</html>

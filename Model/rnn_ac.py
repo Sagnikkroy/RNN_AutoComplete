@@ -59,6 +59,9 @@ def text_to_indices(text):
     # Use .get() to handle characters not in the vocabulary by falling back to 0 (or a dedicated unknown token if defined)
     return [char_to_idx.get(char, 0) for char in text.lower()]
 
+def indices_to_text(indices):
+    """Convert list of numbers back to text"""
+    return ''.join([idx_to_char[idx] for idx in indices])
 
 # %%
 # --- Data Sequence Creation ---

@@ -231,7 +231,7 @@ print(f"\nBatches per epoch: {len(dataloader)}")
 # %%
 # --- Training Loop ---
 
-def train_model(model, dataloader, epochs=100, test_every=5):
+def train_model(model, dataloader, epochs=150, test_every=5):
     """Train the RNN model"""
     model.train()
     losses = []
@@ -288,7 +288,7 @@ def train_model(model, dataloader, epochs=100, test_every=5):
     return losses
 
 # Train the model
-losses = train_model(model, dataloader, epochs=100, test_every=10)
+losses = train_model(model, dataloader, epochs=200, test_every=10)
 
 # %%
 # --- Plot Training Loss ---

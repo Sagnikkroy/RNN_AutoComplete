@@ -211,10 +211,10 @@ def train_model(model, dataloader, epochs=50):
         avg_loss = total_loss / len(dataloader)
         losses.append(avg_loss)
         
-        if (epoch + 1) % 5 == 0:
+        if (epoch + 1) % 1 == 0:
             print(f'Epoch [{epoch+1}/{epochs}], Loss: {avg_loss:.4f}')
 
-            # Test autocomplete after every 5 epochs (uses the now-defined function)
+            # Test autocomplete after every 1 epochs (uses the now-defined function)
             model.eval()
             test_input = "hello"
             with torch.no_grad():

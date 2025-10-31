@@ -474,9 +474,11 @@
                 return 'Start typing now...';
             }
             
-            const serverUrl = currentModel === 'rnn' 
+            console.log("Current model:", currentModel);
+            const serverUrl = currentModel === 'rnn'
                 ? 'http://127.0.0.1:8000/predict'
                 : 'http://127.0.0.1:8001/predict';
+            console.log("Server URL:", serverUrl);
             
             try {
                 const response = await fetch(serverUrl, {

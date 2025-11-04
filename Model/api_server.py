@@ -1,5 +1,7 @@
 # api_server.py
-# Dual FastAPI server: GRU (8000) + LSTM (8001)
+# UNIVERSAL DUAL MODEL SERVER
+# Works with ANY .pth file (GRU/LSTM, any num_layers, any embed_dim, any hidden_size)
+# NO RETRAIN NEEDED
 
 import os
 import re
@@ -13,16 +15,16 @@ from pydantic import BaseModel
 from typing import Dict, Any
 
 # ========================================
-# CONFIG
+# CONFIG – UPDATE PATHS ONLY
 # ========================================
 MODEL_CONFIGS = [
     {
-        "path": "autocomplete_model.pth",       # ← Your GRU model
+        "path": "autocomplete_model.pth",       # ← Your GRU model (2 layers)
         "port": 8000,
         "title": "GRU Autocomplete (8000)"
     },
     {
-        "path": "final_model_cpu.pth",          # ← LSTM model from lstm_ac.py
+        "path": "final_model_cpu.pth",          # ← Your LSTM model (1 layer)
         "port": 8001,
         "title": "LSTM Autocomplete (8001)"
     }
@@ -31,17 +33,17 @@ MODEL_CONFIGS = [
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # ========================================
-# MODEL
+# UNIVERSAL DYNAMIC RNN
 # ========================================
-class DynamicRNN(nn.Module):
-    def __init__(self, vocab_size, hidden_size, num_layers=2, rnn_type="gru"):
+class UniversalRNN(nn.Module):
+    def __init__(self, vocab_size, embed_dim, hidden_size, num_layers, rnn_type="gru"):
         super().__init__()
-        self.embedding = nn.Embedding(vocab_size, hidden_size)
+        self.embedding = nn.Embedding(vocab_size, embed_dim)
         if rnn_type == "lstm":
-            self.rnn = nn.LSTM(hidden_size, hidden_size, num_layers,
+            self.rnn = nn.LSTM(embed_dim, hidden_size, num_layers,
                                batch_first=True, dropout=0.2 if num_layers > 1 else 0.0)
         else:
-            self.rnn = nn.GRU(hidden_size, hidden_size, num_layers,
+            self.rnn = nn.GRU(embed_dim, hidden_size, num_layers,
                               batch_first=True, dropout=0.2 if num_layers > 1 else 0.0)
         self.fc = nn.Linear(hidden_size, vocab_size)
 
@@ -60,15 +62,19 @@ class PredictRequest(BaseModel):
     temperature: float = 0.7
 
 # ========================================
-# REMAP KEYS
+# STATE DICT CLEANER (removes unexpected layers)
 # ========================================
-def remap_state_dict(state_dict):
-    new_dict = {}
+def clean_state_dict(state_dict, expected_layers):
+    cleaned = {}
     for k, v in state_dict.items():
-        if k.startswith("gru.") or k.startswith("lstm."):
-            k = k.replace("gru.", "rnn.").replace("lstm.", "rnn.")
-        new_dict[k] = v
-    return new_dict
+        # Only keep layer 0 to expected_layers-1
+        if "rnn.weight_ih_l" in k or "rnn.weight_hh_l" in k or "rnn.bias" in k:
+            layer_num = int(k.split("_l")[-1][0]) if "_l" in k else 0
+            if layer_num < expected_layers:
+                cleaned[k] = v
+        else:
+            cleaned[k] = v
+    return cleaned
 
 # ========================================
 # APP FACTORY
@@ -127,32 +133,63 @@ def create_app(cfg: Dict[str, Any]) -> FastAPI:
         print(f"[{port}] Loading {path}...")
         try:
             ckpt = torch.load(path, map_location=DEVICE)
-            state_keys = ckpt["model_state_dict"].keys()
+
+            # Detect RNN type
+            state_keys = list(ckpt["model_state_dict"].keys())
             rnn_type = "lstm" if any("lstm." in k for k in state_keys) else "gru"
+
+            # Get architecture from checkpoint
+            embed_dim = ckpt.get("embed_dim", ckpt.get("hidden_size", 128))
+            hidden_size = ckpt.get("hidden_size", 128)
+
+            # Count layers in state_dict
+            max_layer = 0
+            for k in state_keys:
+                if "weight_ih_l" in k or "weight_hh_l" in k:
+                    try:
+                        layer_num = int(k.split("_l")[-1][0])
+                        max_layer = max(max_layer, layer_num + 1)
+                    except:
+                        pass
+            num_layers = max_layer if max_layer > 0 else ckpt.get("num_layers", 1)
 
             data.update({
                 "char_to_idx": ckpt["char_to_idx"],
                 "idx_to_char": ckpt["idx_to_char"],
                 "vocab_size": ckpt["vocab_size"],
-                "seq_length": ckpt.get("seq_length", 15),
+                "seq_length": ckpt.get("seq_length", 25),
                 "rnn_type": rnn_type
             })
 
-            model = DynamicRNN(
+            # Create model with EXACT architecture
+            model = UniversalRNN(
                 vocab_size=data["vocab_size"],
-                hidden_size=ckpt["hidden_size"],
-                num_layers=ckpt.get("num_layers", 2),
+                embed_dim=embed_dim,
+                hidden_size=hidden_size,
+                num_layers=num_layers,
                 rnn_type=rnn_type
             ).to(DEVICE)
 
-            model.load_state_dict(remap_state_dict(ckpt["model_state_dict"]))
+            # Clean state dict to match model
+            clean_sd = clean_state_dict(ckpt["model_state_dict"], num_layers)
+            # Remap gru./lstm. → rnn.
+            remapped = {}
+            for k, v in clean_sd.items():
+                if k.startswith("gru.") or k.startswith("lstm."):
+                    k = k.replace("gru.", "rnn.").replace("lstm.", "rnn.")
+                remapped[k] = v
+
+            model.load_state_dict(remapped, strict=True)
             model.eval()
             data["model"] = model
 
-            print(f"[{port}] Loaded! {rnn_type.upper()}, hidden={ckpt['hidden_size']}, vocab={data['vocab_size']}")
+            print(f"[{port}] Loaded! {rnn_type.upper()}, "
+                  f"embed={embed_dim}, hidden={hidden_size}, layers={num_layers}, vocab={data['vocab_size']}")
 
         except Exception as e:
             print(f"[{port}] FAILED: {e}")
+            import traceback
+            traceback.print_exc()
 
     @app.post("/predict")
     async def predict(req: PredictRequest):
@@ -167,13 +204,13 @@ def create_app(cfg: Dict[str, Any]) -> FastAPI:
     return app
 
 # ========================================
-# RUN SERVERS
+# RUN
 # ========================================
 def run_server(cfg):
     uvicorn.run(create_app(cfg), host="0.0.0.0", port=cfg["port"])
 
 if __name__ == "__main__":
-    print("Starting dual-model server...")
+    print("Starting universal dual-model server...")
     threads = []
     for cfg in MODEL_CONFIGS:
         t = threading.Thread(target=run_server, args=(cfg,), daemon=True)

@@ -1,6 +1,5 @@
 # api_server.py
-# Dual-model FastAPI server: GRU (8000) + LSTM (8001)
-# Loads .pth files saved by lstm_ac.py or gru_ac.py
+# Dual FastAPI server: GRU (8000) + LSTM (8001)
 
 import os
 import re
@@ -14,25 +13,25 @@ from pydantic import BaseModel
 from typing import Dict, Any
 
 # ========================================
-# CONFIGURATION
+# CONFIG
 # ========================================
 MODEL_CONFIGS = [
     {
-        "path": "autocomplete_model.pth",           # GRU model
+        "path": "autocomplete_model.pth",       # ← Your GRU model
         "port": 8000,
-        "title": "Autocomplete API – GRU (8000)"
+        "title": "GRU Autocomplete (8000)"
     },
     {
-        "path": "autocomplete_model_lstm.pth",       # LSTM model
+        "path": "final_model_cpu.pth",          # ← LSTM model from lstm_ac.py
         "port": 8001,
-        "title": "Autocomplete API – LSTM (8001)"
+        "title": "LSTM Autocomplete (8001)"
     }
 ]
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # ========================================
-# DYNAMIC RNN MODEL
+# MODEL
 # ========================================
 class DynamicRNN(nn.Module):
     def __init__(self, vocab_size, hidden_size, num_layers=2, rnn_type="gru"):
@@ -41,7 +40,7 @@ class DynamicRNN(nn.Module):
         if rnn_type == "lstm":
             self.rnn = nn.LSTM(hidden_size, hidden_size, num_layers,
                                batch_first=True, dropout=0.2 if num_layers > 1 else 0.0)
-        else:  # gru
+        else:
             self.rnn = nn.GRU(hidden_size, hidden_size, num_layers,
                               batch_first=True, dropout=0.2 if num_layers > 1 else 0.0)
         self.fc = nn.Linear(hidden_size, vocab_size)
@@ -53,7 +52,7 @@ class DynamicRNN(nn.Module):
         return out, hidden
 
 # ========================================
-# REQUEST MODEL
+# REQUEST
 # ========================================
 class PredictRequest(BaseModel):
     text: str
@@ -61,7 +60,7 @@ class PredictRequest(BaseModel):
     temperature: float = 0.7
 
 # ========================================
-# KEY REMAPPING (gru./lstm. → rnn.)
+# REMAP KEYS
 # ========================================
 def remap_state_dict(state_dict):
     new_dict = {}
@@ -72,7 +71,7 @@ def remap_state_dict(state_dict):
     return new_dict
 
 # ========================================
-# CREATE APP FACTORY
+# APP FACTORY
 # ========================================
 def create_app(cfg: Dict[str, Any]) -> FastAPI:
     app = FastAPI(title=cfg["title"])
@@ -83,7 +82,6 @@ def create_app(cfg: Dict[str, Any]) -> FastAPI:
         "vocab_size": None, "seq_length": 15, "rnn_type": "gru"
     }
 
-    # --- Helpers ---
     def clean_text(text: str) -> str:
         return re.sub(r'\s+', ' ', re.sub(r'[^a-zA-Z0-9\s\.\!\?\,\'\-]', '', text)).strip()
 
@@ -123,7 +121,6 @@ def create_app(cfg: Dict[str, Any]) -> FastAPI:
 
         return indices_to_text(generated)
 
-    # --- Startup: Load Model ---
     @app.on_event("startup")
     async def load_model():
         path, port = cfg["path"], cfg["port"]
@@ -157,7 +154,6 @@ def create_app(cfg: Dict[str, Any]) -> FastAPI:
         except Exception as e:
             print(f"[{port}] FAILED: {e}")
 
-    # --- Endpoint ---
     @app.post("/predict")
     async def predict(req: PredictRequest):
         cleaned = clean_text(req.text)
@@ -171,7 +167,7 @@ def create_app(cfg: Dict[str, Any]) -> FastAPI:
     return app
 
 # ========================================
-# RUN BOTH SERVERS
+# RUN SERVERS
 # ========================================
 def run_server(cfg):
     uvicorn.run(create_app(cfg), host="0.0.0.0", port=cfg["port"])

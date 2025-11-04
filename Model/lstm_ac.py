@@ -71,7 +71,7 @@ print(f"Sequences: {X.shape}, Targets: {y.shape}")
 # 5. MODEL
 # --------------------------------------------------------------
 class TinyLSTM(nn.Module):
-    def __init__(self, vocab_size, embed_dim=32, hidden_size=64, num_layers=1):
+    def __init__(self, vocab_size, embed_dim=32, hidden_size=256, num_layers=1):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_dim)
         self.lstm = nn.LSTM(embed_dim, hidden_size, num_layers, batch_first=True)

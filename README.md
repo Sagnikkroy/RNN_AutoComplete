@@ -7,8 +7,10 @@
 ╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝  ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚══════╝╚══════╝   ╚═╝   ╚══════╝    ╚═╝     ╚═╝╚══════╝                                                                                </pre>  
 
 
-## ***Autocomplete me*** is a project I have built to try to replicate Google/Apple's Autocomplete feature in their systems 
+## Autocomplete Me is a Python project I built to replicate the autocomplete behavior you see in modern systems like Google, Apple's typing suggestions.
 
+The main goal of this project is to predict the next likely characters or words based on what’s already typed basically teaching a model how to guess your thoughts mid-sentence.
+There are two deep learning models implemented here that serve the same core purpose (next-character prediction), but they behave quite differently in terms of sentence structure and coherence.
 There are 2 models in this project serving the same functionality (prediction of charecters that comes next according to the previous charecters and words)
 
 ***GRU MODEL***
@@ -17,15 +19,15 @@ The first model is made of a GRU architecture it works heres a demo of the GRU m
 "hi mom how ar(ound to organizing a)..." 
 ![GRU EXAMPLE](./assets/gruexample.png)
 This sentence shows a lesser accuracy to how we actually speak although each words it forms kind of make sense the words together dosent make too much sense
-The way it arranges each charecters make a good enough sequence model to form cohorent words but not a cohorent sentence!!! 
+The way it arranges each charecters make a good enough sequence model to form cohorent words but not a cohorent sentence!!!
+Still, it’s a solid sequence model that learns character patterns nicely — you can see it generating coherent words even though the sentence structure is off. That’s because GRUs, although efficient, tend to forget long-term dependencies — so while it understands word formation quite well, it struggles to link words meaningfully over a longer context.
 
 ***LSTM MODEL***
 
 The next model i.e. made of of the lstm architechture shows considerable improvement than the previous one it correctly guesses and forms a coherent sentence 
 "hi mom how ar(e you did you see th)..." 
 ![GRU EXAMPLE](./assets/lstmexample.png)
-The LSTM model is making a much better prediction of sequence to form cohorent sentences...
-It seems like the model has now a better memory to guess the sequence better it seems like its asking mom how she is and if she saw something?... THAT IS A SIGNIFICANT IMPROVEMENT!!!
+The LSTM model is making a much better prediction of sequence to form cohorent sentences...It starts forming semantically coherent sentences, not just random words. The model seems to have learned conversational flow.This shows that the LSTM’s longer memory is doing its job right — capturing both context and sentence-level dependencies, giving it a real human-like flow almost like it’s genuinely asking “Hi mom, how are you? Did you see the…” THAT IS A SIGNIFICANT IMPROVEMENT!!!
 
 ***Dataset***
 
